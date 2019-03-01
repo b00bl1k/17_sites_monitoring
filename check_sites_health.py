@@ -18,18 +18,18 @@ def get_domain_from_url(url):
 
 
 def is_server_respond_with_200(url):
-    http_status_ok = 200
     try:
-        response = requests.get(url, allow_redirects=True)
+        return requests.get(url).ok
     except requests.exceptions.RequestException:
         return False
-    return response.status_code == http_status_ok
 
 
 def get_domain_expiration_date(domain_name):
     try:
         domain = whois.whois(domain_name)
     except whois.parser.PywhoisError:
+        return None
+    except ConnectionResetError:
         return None
 
     if isinstance(domain.expiration_date, list):
@@ -38,8 +38,7 @@ def get_domain_expiration_date(domain_name):
     return domain.expiration_date
 
 
-def is_domain_prepaid(expiration_date):
-    prepaid_days_min = 30
+def is_domain_prepaid(expiration_date, prepaid_days_min=30):
     remain_time = (expiration_date - datetime.now())
     return remain_time.days > prepaid_days_min
 
@@ -47,13 +46,12 @@ def is_domain_prepaid(expiration_date):
 def get_url_info(url):
     domain_name = get_domain_from_url(url)
     expiration_date = get_domain_expiration_date(domain_name)
+    is_available = is_server_respond_with_200(url)
 
     if expiration_date:
         is_prepaid = is_domain_prepaid(expiration_date)
-        is_available = is_server_respond_with_200(url)
     else:
         is_prepaid = False
-        is_available = False
 
     return {
         "domain_name": domain_name,
